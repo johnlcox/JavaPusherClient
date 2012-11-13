@@ -20,29 +20,27 @@ package com.justinschultz.examples;
  *  limitations under the License. 
  */
 
-import org.json.JSONObject;
-
 import com.justinschultz.pusherclient.ChannelListener;
 import com.justinschultz.pusherclient.Pusher;
-import com.justinschultz.pusherclient.PusherListener;
 import com.justinschultz.pusherclient.Pusher.Channel;
+import com.justinschultz.pusherclient.PusherListener;
 
 public class PusherTest {
 	private static final String PUSHER_API_KEY = "80bbbe17a2e65338705a";
 	private static final String PUSHER_CHANNEL = "test-channel";
 	private static Pusher pusher;
-	
-	public static void main(String[] args) {	
+
+	public static void main(String[] args) {
 		PusherListener eventListener = new PusherListener() {
 			Channel channel;
-			
+
 			@Override
 			public void onConnect(String socketId) {
 				System.out.println("Pusher connected. Socket Id is: " + socketId);
 				channel = pusher.subscribe(PUSHER_CHANNEL);
 				System.out.println("Subscribed to channel: " + channel);
 				channel.send("client-event-test", new JSONObject());
-				
+
 				channel.bind("price-updated", new ChannelListener() {
 					@Override
 					public void onMessage(String message) {
@@ -61,8 +59,8 @@ public class PusherTest {
 				System.out.println("Pusher disconnected.");
 			}
 		};
-		
-		pusher = new Pusher(PUSHER_API_KEY);
+
+		pusher = new Pusher(PUSHER_API_KEY, false);
 		pusher.setPusherListener(eventListener);
 		pusher.connect();
 	}

@@ -23,8 +23,6 @@ package com.justinschultz.pusherclient;
 import java.net.URI;
 import java.util.HashMap;
 
-import org.json.JSONObject;
-
 import com.justinschultz.websocket.WebSocket;
 import com.justinschultz.websocket.WebSocketConnection;
 import com.justinschultz.websocket.WebSocketEventHandler;
@@ -35,29 +33,33 @@ public class Pusher {
 	private final String VERSION = "1.11";
 	private final String HOST = "ws.pusherapp.com";
 	private final int WS_PORT = 80;
-	private final String PREFIX = "ws://";
+	private final int WSS_PORT = 443;
+	private final String WS_PREFIX = "ws://";
+	private final String WSS_PREFIX = "wss://";
 
 	private WebSocket webSocket;
-	private String apiKey;
+	private final String apiKey;
 	private final HashMap<String, Channel> channels;
+	private final boolean isEncrypted;
 
 	private PusherListener pusherEventListener;
 
-	public Pusher(String key) {
-		apiKey = key;
-		channels = new HashMap<String, Channel>();
+	public Pusher(String key, boolean isEncrypted) {
+		this.apiKey = key;
+		this.channels = new HashMap<String, Channel>();
+		this.isEncrypted = isEncrypted;
 	}
-	
+
 	public void connect() {
 		String path = "/app/" + apiKey + "?client=" + PUSHER_CLIENT + "&version=" + VERSION;
 
 		try {
-			URI url = new URI(PREFIX + HOST + ":" + WS_PORT + path);
+			URI url = new URI(getPrefix() + HOST + ":" + getPort() + path);
 			webSocket = new WebSocketConnection(url);
 			webSocket.setEventHandler(new WebSocketEventHandler() {
 				@Override
-				public void onOpen() { 
-					// Pusher's onOpen is invoked after we've received a 
+				public void onOpen() {
+					// Pusher's onOpen is invoked after we've received a
 					// socket_id in onMessage()
 				}
 
@@ -66,9 +68,8 @@ public class Pusher {
 					try {
 						JSONObject jsonMessage = new JSONObject(message.getText());
 						String event = jsonMessage.optString("event", null);
-						
-						if(event.equals("pusher:connection_established" ))
-						{
+
+						if (event.equals("pusher:connection_established")) {
 							JSONObject data = new JSONObject(jsonMessage.getString("data"));
 							pusherEventListener.onConnect(data.getString("socket_id"));
 						} else {
@@ -85,14 +86,14 @@ public class Pusher {
 					pusherEventListener.onDisconnect();
 				}
 			});
-			
+
 			webSocket.connect();
-			
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public void disconnect() {
 		try {
 			webSocket.close();
@@ -100,15 +101,15 @@ public class Pusher {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public boolean isConnected() {
 		return webSocket.isConnected();
 	}
-	
+
 	public void setPusherListener(PusherListener listener) {
 		pusherEventListener = listener;
 	}
-	
+
 	public Channel subscribe(String channelName) {
 		Channel c = new Channel(channelName);
 
@@ -123,7 +124,7 @@ public class Pusher {
 		channels.put(channelName, c);
 		return c;
 	}
-	
+
 	public Channel subscribe(String channelName, String authToken) {
 		Channel c = new Channel(channelName);
 
@@ -138,7 +139,7 @@ public class Pusher {
 		channels.put(channelName, c);
 		return c;
 	}
-	
+
 	public Channel subscribe(String channelName, String authToken, int userId) {
 		Channel c = new Channel(channelName);
 
@@ -172,27 +173,27 @@ public class Pusher {
 		JSONObject data = new JSONObject();
 		c.send("pusher:subscribe", data);
 	}
-	
+
 	private void sendSubscribeMessage(Channel c, String authToken) {
 		JSONObject data = new JSONObject();
 		try {
 			data.put("auth", authToken);
-		} catch(Exception ex) {
-			
+		} catch (Exception ex) {
+
 		}
-		
+
 		c.send("pusher:subscribe", data);
 	}
-	
+
 	private void sendSubscribeMessage(Channel c, String authToken, int userId) {
 		JSONObject data = new JSONObject();
 		try {
 			data.put("auth", authToken);
 			data.put("channel_data", new JSONObject().put("user_id", userId));
-		} catch(Exception ex) {
-			
+		} catch (Exception ex) {
+
 		}
-		
+
 		c.send("pusher:subscribe", data);
 	}
 
@@ -200,15 +201,15 @@ public class Pusher {
 		JSONObject data = new JSONObject();
 		c.send("pusher:unsubscribe", data);
 	}
-	
+
 	private void dispatchChannelEvent(JSONObject jsonMessage, String event) {
 		String channelName = jsonMessage.optString("channel", null);
-		
+
 		Channel channel = channels.get(channelName);
-		if(channel != null) {
+		if (channel != null) {
 			ChannelListener channelListener = channel.channelEvents.get(event);
-			
-			if(channelListener != null)
+
+			if (channelListener != null)
 				channelListener.onMessage(jsonMessage.toString());
 		}
 	}
@@ -226,7 +227,7 @@ public class Pusher {
 	}
 
 	public class Channel {
-		private String channelName;
+		private final String channelName;
 		private final HashMap<String, ChannelListener> channelEvents;
 
 		public Channel(String _name) {
@@ -255,5 +256,13 @@ public class Pusher {
 		public String toString() {
 			return channelName;
 		}
+	}
+
+	private String getPrefix() {
+		return isEncrypted ? WSS_PREFIX : WS_PREFIX;
+	}
+
+	private int getPort() {
+		return isEncrypted ? WSS_PORT : WS_PORT;
 	}
 }
