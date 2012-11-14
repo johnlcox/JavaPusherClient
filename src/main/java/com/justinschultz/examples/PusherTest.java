@@ -20,6 +20,8 @@ package com.justinschultz.examples;
  *  limitations under the License. 
  */
 
+import org.json.JSONObject;
+
 import com.justinschultz.pusherclient.ChannelListener;
 import com.justinschultz.pusherclient.Pusher;
 import com.justinschultz.pusherclient.Pusher.Channel;

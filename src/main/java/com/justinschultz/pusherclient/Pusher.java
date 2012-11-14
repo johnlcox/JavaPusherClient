@@ -23,6 +23,8 @@ package com.justinschultz.pusherclient;
 import java.net.URI;
 import java.util.HashMap;
 
+import org.json.JSONObject;
+
 import com.justinschultz.websocket.WebSocket;
 import com.justinschultz.websocket.WebSocketConnection;
 import com.justinschultz.websocket.WebSocketEventHandler;
