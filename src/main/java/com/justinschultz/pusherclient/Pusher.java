@@ -40,6 +40,7 @@ public class Pusher {
 	private final String WSS_PREFIX = "wss://";
 
 	private WebSocket webSocket;
+	private String socketId;
 	private final String apiKey;
 	private final HashMap<String, Channel> channels;
 	private final boolean isEncrypted;
@@ -73,7 +74,8 @@ public class Pusher {
 
 						if (event.equals("pusher:connection_established")) {
 							JSONObject data = new JSONObject(jsonMessage.getString("data"));
-							pusherEventListener.onConnect(data.getString("socket_id"));
+							socketId = data.getString("socket_id");
+							pusherEventListener.onConnect(socketId);
 						} else {
 							pusherEventListener.onMessage(jsonMessage.toString());
 							dispatchChannelEvent(jsonMessage, event);
@@ -124,6 +126,30 @@ public class Pusher {
 		}
 
 		channels.put(channelName, c);
+		return c;
+	}
+
+	/**
+	 * Subscribes to the specified channel and uses the specified authorizor for getting an authorization token.
+	 * 
+	 * @param channelName
+	 *            The name of the channel to subscribe to.
+	 * @param authorizor
+	 *            The authorizor to use for getting an authorization token.
+	 * @return The subscribed channel
+	 */
+	public Channel subscribe(String channelName, PusherAuthorizor authorizor) {
+		Channel c = new Channel(channelName);
+
+		if (webSocket != null && webSocket.isConnected()) {
+			try {
+				String authToken = authorizor.authorize(socketId, channelName);
+				subscribe(channelName, authToken);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
 		return c;
 	}
 
