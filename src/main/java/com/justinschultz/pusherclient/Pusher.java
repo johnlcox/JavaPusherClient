@@ -144,12 +144,13 @@ public class Pusher {
 		if (webSocket != null && webSocket.isConnected()) {
 			try {
 				String authToken = authorizor.authorize(socketId, channelName);
-				subscribe(channelName, authToken);
+				sendSubscribeMessage(c, authToken);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
 
+		channels.put(channelName, c);
 		return c;
 	}
 
