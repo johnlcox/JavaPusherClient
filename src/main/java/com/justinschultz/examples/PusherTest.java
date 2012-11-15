@@ -23,14 +23,14 @@ package com.justinschultz.examples;
 import org.json.JSONObject;
 
 import com.justinschultz.pusherclient.ChannelListener;
-import com.justinschultz.pusherclient.Pusher;
-import com.justinschultz.pusherclient.Pusher.Channel;
+import com.justinschultz.pusherclient.PusherClient;
+import com.justinschultz.pusherclient.PusherClient.Channel;
 import com.justinschultz.pusherclient.PusherListener;
 
 public class PusherTest {
 	private static final String PUSHER_API_KEY = "80bbbe17a2e65338705a";
 	private static final String PUSHER_CHANNEL = "test-channel";
-	private static Pusher pusher;
+	private static PusherClient pusher;
 
 	public static void main(String[] args) {
 		PusherListener eventListener = new PusherListener() {
@@ -62,7 +62,7 @@ public class PusherTest {
 			}
 		};
 
-		pusher = new Pusher(PUSHER_API_KEY, false);
+		pusher = new PusherClient(PUSHER_API_KEY, false);
 		pusher.setPusherListener(eventListener);
 		pusher.connect();
 	}

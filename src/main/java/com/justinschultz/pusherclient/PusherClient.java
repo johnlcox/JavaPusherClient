@@ -30,7 +30,7 @@ import com.justinschultz.websocket.WebSocketConnection;
 import com.justinschultz.websocket.WebSocketEventHandler;
 import com.justinschultz.websocket.WebSocketMessage;
 
-public class Pusher {
+public class PusherClient {
 	private static final String PUSHER_CLIENT = "java-android-client";
 	private final String VERSION = "1.11";
 	private final String HOST = "ws.pusherapp.com";
@@ -47,7 +47,7 @@ public class Pusher {
 
 	private PusherListener pusherEventListener;
 
-	public Pusher(String key, boolean isEncrypted) {
+	public PusherClient(String key, boolean isEncrypted) {
 		this.apiKey = key;
 		this.channels = new HashMap<String, Channel>();
 		this.isEncrypted = isEncrypted;
