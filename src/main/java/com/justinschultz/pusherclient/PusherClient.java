@@ -24,6 +24,8 @@ import java.net.URI;
 import java.util.HashMap;
 
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.justinschultz.websocket.WebSocket;
 import com.justinschultz.websocket.WebSocketConnection;
@@ -31,6 +33,7 @@ import com.justinschultz.websocket.WebSocketEventHandler;
 import com.justinschultz.websocket.WebSocketMessage;
 
 public class PusherClient {
+	private static final Logger logger = LoggerFactory.getLogger(PusherClient.class);
 	private static final String PUSHER_CLIENT = "java-android-client";
 	private final String VERSION = "1.11";
 	private final String HOST = "ws.pusherapp.com";
@@ -81,7 +84,7 @@ public class PusherClient {
 							dispatchChannelEvent(jsonMessage, event);
 						}
 					} catch (Exception e) {
-						e.printStackTrace();
+						logger.error("Error recieving message", e);
 					}
 				}
 
@@ -94,7 +97,7 @@ public class PusherClient {
 			webSocket.connect();
 
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("Error connecting", e);
 		}
 	}
 
@@ -102,7 +105,7 @@ public class PusherClient {
 		try {
 			webSocket.close();
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("Error closing socket", e);
 		}
 	}
 
@@ -121,7 +124,7 @@ public class PusherClient {
 			try {
 				sendSubscribeMessage(c);
 			} catch (Exception e) {
-				e.printStackTrace();
+				logger.error("error subscribing", e);
 			}
 		}
 
@@ -146,7 +149,7 @@ public class PusherClient {
 				String authToken = authorizor.authorize(socketId, channelName);
 				sendSubscribeMessage(c, authToken);
 			} catch (Exception e) {
-				e.printStackTrace();
+				logger.error("Error subscribing", e);
 			}
 		}
 
@@ -161,7 +164,7 @@ public class PusherClient {
 			try {
 				sendSubscribeMessage(c, authToken);
 			} catch (Exception e) {
-				e.printStackTrace();
+				logger.error("Error subscribing", e);
 			}
 		}
 
@@ -176,7 +179,7 @@ public class PusherClient {
 			try {
 				sendSubscribeMessage(c, authToken, userId);
 			} catch (Exception e) {
-				e.printStackTrace();
+				logger.error("Error subscribing", e);
 			}
 		}
 
@@ -190,7 +193,7 @@ public class PusherClient {
 				try {
 					sendUnsubscribeMessage(channels.get(channelName));
 				} catch (Exception e) {
-					e.printStackTrace();
+					logger.error("Error unsubscribing", e);
 				}
 			}
 
@@ -207,8 +210,8 @@ public class PusherClient {
 		JSONObject data = new JSONObject();
 		try {
 			data.put("auth", authToken);
-		} catch (Exception ex) {
-
+		} catch (Exception e) {
+			logger.error("Error sending subscribe message", e);
 		}
 
 		c.send("pusher:subscribe", data);
@@ -219,8 +222,8 @@ public class PusherClient {
 		try {
 			data.put("auth", authToken);
 			data.put("channel_data", new JSONObject().put("user_id", userId));
-		} catch (Exception ex) {
-
+		} catch (Exception e) {
+			logger.error("Error sending subscribe message", e);
 		}
 
 		c.send("pusher:subscribe", data);
@@ -251,7 +254,7 @@ public class PusherClient {
 			message.put("data", data);
 			webSocket.send(message.toString());
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("Error sending message", e);
 		}
 	}
 
@@ -273,7 +276,7 @@ public class PusherClient {
 				message.put("data", data);
 				webSocket.send(message.toString());
 			} catch (Exception e) {
-				e.printStackTrace();
+				logger.error("Error sending message", e);
 			}
 		}
 
