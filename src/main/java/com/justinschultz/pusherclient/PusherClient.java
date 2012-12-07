@@ -22,6 +22,8 @@ package com.justinschultz.pusherclient;
 
 import java.net.URI;
 import java.util.HashMap;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -30,34 +32,42 @@ import org.slf4j.LoggerFactory;
 import com.justinschultz.websocket.WebSocket;
 import com.justinschultz.websocket.WebSocketConnection;
 import com.justinschultz.websocket.WebSocketEventHandler;
+import com.justinschultz.websocket.WebSocketException;
 import com.justinschultz.websocket.WebSocketMessage;
 
 public class PusherClient {
 	private static final Logger logger = LoggerFactory.getLogger(PusherClient.class);
 	private static final String PUSHER_CLIENT = "java-android-client";
-	private final String VERSION = "1.11";
-	private final String HOST = "ws.pusherapp.com";
-	private final int WS_PORT = 80;
-	private final int WSS_PORT = 443;
-	private final String WS_PREFIX = "ws://";
-	private final String WSS_PREFIX = "wss://";
+	private static final String VERSION = "1.11";
+	private static final String PROTOCOL_VERSION = "5";
+	private static final String HOST = "ws.pusherapp.com";
+	private static final int WS_PORT = 80;
+	private static final int WSS_PORT = 443;
+	private static final String WS_PREFIX = "ws://";
+	private static final String WSS_PREFIX = "wss://";
 
 	private WebSocket webSocket;
 	private String socketId;
+	private boolean allowAutoReconnect = true;
 	private final String apiKey;
 	private final HashMap<String, Channel> channels;
 	private final boolean isEncrypted;
+	private final ConnectionTimeoutManager timeoutManager;
 
 	private PusherListener pusherEventListener;
+	private Timer activityTimer;
 
 	public PusherClient(String key, boolean isEncrypted) {
 		this.apiKey = key;
 		this.channels = new HashMap<String, Channel>();
 		this.isEncrypted = isEncrypted;
+		this.timeoutManager = new ConnectionTimeoutManager(this);
 	}
 
 	public void connect() {
-		String path = "/app/" + apiKey + "?client=" + PUSHER_CLIENT + "&version=" + VERSION;
+		String path = "/app/" + apiKey + "?client=" + PUSHER_CLIENT + "&version=" + VERSION + "protocol="
+				+ PROTOCOL_VERSION;
+		allowAutoReconnect = true;
 
 		try {
 			URI url = new URI(getPrefix() + HOST + ":" + getPort() + path);
@@ -72,30 +82,41 @@ public class PusherClient {
 				@Override
 				public void onMessage(WebSocketMessage message) {
 					try {
+						resetActivityTimer();
+
 						JSONObject jsonMessage = new JSONObject(message.getText());
 						String event = jsonMessage.optString("event", null);
 
 						if (event.equals("pusher:connection_established")) {
+							timeoutManager.stopTimeoutTimer();
+
 							JSONObject data = new JSONObject(jsonMessage.getString("data"));
 							socketId = data.getString("socket_id");
 							pusherEventListener.onConnect(socketId);
+						} else if (event.equals("pusher:ping")) {
+							send("pusher:pong", new JSONObject());
 						} else {
 							pusherEventListener.onMessage(jsonMessage.toString());
 							dispatchChannelEvent(jsonMessage, event);
 						}
 					} catch (Exception e) {
-						logger.error("Error recieving message", e);
+						logger.error("Error receiving message", e);
 					}
 				}
 
 				@Override
 				public void onClose() {
-					pusherEventListener.onDisconnect();
+					logger.info("Pusher socket closed");
+					if (allowAutoReconnect) {
+						timeoutManager.retryConnect();
+					} else {
+						pusherEventListener.onDisconnect();
+					}
 				}
 			});
 
 			webSocket.connect();
-
+			timeoutManager.startTimeoutTimer();
 		} catch (Exception e) {
 			logger.error("Error connecting", e);
 		}
@@ -103,6 +124,7 @@ public class PusherClient {
 
 	public void disconnect() {
 		try {
+			allowAutoReconnect = false;
 			webSocket.close();
 		} catch (Exception e) {
 			logger.error("Error closing socket", e);
@@ -110,7 +132,7 @@ public class PusherClient {
 	}
 
 	public boolean isConnected() {
-		return webSocket.isConnected();
+		return webSocket != null && webSocket.isConnected();
 	}
 
 	public void setPusherListener(PusherListener listener) {
@@ -296,5 +318,31 @@ public class PusherClient {
 
 	private int getPort() {
 		return isEncrypted ? WSS_PORT : WS_PORT;
+	}
+
+	private void resetActivityTimer() {
+		if (activityTimer != null) {
+			activityTimer.cancel();
+		}
+
+		activityTimer = new Timer();
+		activityTimer.schedule(new TimerTask() {
+			@Override
+			public void run() {
+				logger.debug("Sending PING");
+				send("pusher:ping", new JSONObject());
+				activityTimer.schedule(new TimerTask() {
+					@Override
+					public void run() {
+						try {
+							logger.debug("Did not receive PONG: Closing connection");
+							webSocket.close();
+						} catch (WebSocketException e) {
+							logger.error("Error closing web socket connection", e);
+						}
+					}
+				}, 30000);
+			}
+		}, 120000);
 	}
 }
